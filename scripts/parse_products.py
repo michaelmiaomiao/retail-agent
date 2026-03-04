@@ -21,7 +21,8 @@ for html_file in RAW_DIR.glob("*.html"):
     products.append(
         {
             "source_file": str(html_file),
-            "title": title
+            "title": title,
+            "url": "unknown"
         }
     )
 
