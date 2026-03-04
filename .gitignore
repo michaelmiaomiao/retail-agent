@@ -8,3 +8,5 @@ data/processed/
 .venv/
 
 reports/
+
+.idea/
