@@ -15,11 +15,22 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 # Broad selector set to handle Costco DOM variation on listing pages.
 PRODUCT_LINK_SELECTORS = [
     "a[data-testid='productTile-link']",
+    "a[data-automation-id='productTile-link']",
+    "a[href*='.product.'] span[data-test-id='product-name']",
     "div.product-tile-set a[href*='/p/']",
-    "a[href*='.product.']",
+    "div[data-testid='product-tile'] a[href]",
+    "a[href*='/product/']",
     "a[href*='/wcsstore/']",
     "a[href*='costco.com/']",
 ]
+LISTING_READY_SELECTORS = [
+    "div.product-tile-set",
+    "div[data-testid='product-grid']",
+    "div[data-testid='product-tile']",
+    "a[data-testid='productTile-link']",
+]
+NAVIGATION_ATTEMPTS_PER_URL = 2
+SCROLL_STEPS = 5
 
 
 def normalize_url(url: str) -> str:
@@ -99,7 +110,13 @@ def main() -> None:
         browser_types = [("chromium", p.chromium)]
 
         for browser_name, browser_type in browser_types:
-            browser = browser_type.launch(headless=True)
+            browser = browser_type.launch(
+                headless=True,
+                args=[
+                    "--disable-http2",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            )
             context = browser.new_context(
                 user_agent=(
                     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -107,28 +124,42 @@ def main() -> None:
                 ),
                 locale="en-US",
             )
-            page = context.new_page()
+            context.set_extra_http_headers(
+                {
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Upgrade-Insecure-Requests": "1",
+                }
+            )
 
             try:
                 for url in FALLBACK_URLS:
-                    print(f"[{browser_name}] Opening: {url}")
-                    try:
-                        page.goto(url, wait_until="domcontentloaded", timeout=90_000)
-                    except Exception as exc:
-                        last_error = exc
-                        continue
+                    for attempt in range(1, NAVIGATION_ATTEMPTS_PER_URL + 1):
+                        page = context.new_page()
+                        print(f"[{browser_name}] Opening: {url} (attempt {attempt})")
+                        try:
+                            page.goto(url, wait_until="domcontentloaded", timeout=90_000)
+                        except Exception as exc:
+                            last_error = exc
+                            page.close()
+                            continue
 
-                    # Wait for either products or a stable idle state, then scroll once to trigger lazy rendering.
-                    try:
-                        page.wait_for_selector(", ".join(PRODUCT_LINK_SELECTORS), timeout=30_000)
-                    except Exception:
-                        pass
+                        # Prefer waiting for listing container and then product links.
+                        try:
+                            page.wait_for_selector(", ".join(LISTING_READY_SELECTORS), timeout=25_000)
+                        except Exception:
+                            pass
 
-                    page.mouse.wheel(0, 4000)
-                    page.wait_for_timeout(2_000)
+                        # Gradual scroll helps lazy-loaded cards render.
+                        for _ in range(SCROLL_STEPS):
+                            page.mouse.wheel(0, 2800)
+                            page.wait_for_timeout(1200)
 
-                    html = page.content()
-                    cards = extract_cards(page)
+                        html = page.content()
+                        cards = extract_cards(page)
+                        page.close()
+                        if cards:
+                            break
+
                     if cards:
                         break
 
