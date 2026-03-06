@@ -78,6 +78,7 @@ def extract_cards(page) -> list[dict]:
 def main() -> None:
     now = datetime.now()
     stamp = now.strftime("%Y%m%d_%H%M%S")
+    fetch_error = ""
 
     html_latest = RAW_DIR / "wsl_latest.html"
     cards_latest = RAW_DIR / "wsl_cards_latest.json"
@@ -140,7 +141,12 @@ def main() -> None:
                 browser.close()
 
         if not html:
-            raise RuntimeError(f"Failed to fetch WSL page via Playwright. Last error: {last_error}")
+            fetch_error = str(last_error) if last_error else "unknown_error"
+            html = (
+                "<html><body><h1>WSL fetch failed</h1>"
+                f"<p>{fetch_error}</p></body></html>"
+            )
+            cards = []
 
     html_latest.write_text(html, encoding="utf-8")
     html_snapshot.write_text(html, encoding="utf-8")
@@ -151,6 +157,8 @@ def main() -> None:
         "fetched_at": now.isoformat(timespec="seconds"),
         "items": cards,
     }
+    if fetch_error:
+        cards_payload["fetch_error"] = fetch_error
 
     cards_latest.write_text(json.dumps(cards_payload, indent=2, ensure_ascii=False), encoding="utf-8")
     cards_snapshot.write_text(json.dumps(cards_payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -160,6 +168,8 @@ def main() -> None:
     print(f"Saved cards: {cards_latest}")
     print(f"Saved cards snapshot: {cards_snapshot}")
     print(f"Items extracted: {len(cards)}")
+    if fetch_error:
+        print(f"WARNING: fetch fallback used due to error: {fetch_error}")
 
 
 if __name__ == "__main__":
