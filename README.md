@@ -12,3 +12,12 @@ Costco-focused retail intelligence agent: track a watchlist of Costco items, par
 python3 scripts/fetch_products.py
 python3 scripts/parse_products.py
 python3 scripts/generate_report.py
+
+## Watchlist + Telegram
+1. Set env vars in `.env`:
+   - `TELEGRAM_BOT_TOKEN=<bot token>`
+   - `TELEGRAM_CHAT_ID=<chat id>` (optional if bot has recent `getUpdates`)
+2. Run:
+   - `python3 scripts/run_watchlist_pipeline.py`
+
+This runs fetch -> parse -> watchlist report -> Telegram send.
