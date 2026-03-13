@@ -1,3 +1,4 @@
+import argparse
 import os
 from datetime import date
 from pathlib import Path
@@ -9,15 +10,15 @@ REPORTS_DIR = Path("reports/weekly")
 MAX_MESSAGE_LEN = 4000
 
 
-def get_latest_report_path() -> Path:
-    today_name = f"{date.today().isoformat()}-watchlist.md"
+def get_latest_report_path(default_suffix: str = "-watchlist.md") -> Path:
+    today_name = f"{date.today().isoformat()}{default_suffix}"
     today_path = REPORTS_DIR / today_name
     if today_path.exists():
         return today_path
 
-    candidates = sorted(REPORTS_DIR.glob("*-watchlist.md"))
+    candidates = sorted(REPORTS_DIR.glob(f"*{default_suffix}"))
     if not candidates:
-        raise FileNotFoundError("No watchlist report found under reports/weekly")
+        raise FileNotFoundError(f"No report found under reports/weekly matching *{default_suffix}")
     return candidates[-1]
 
 
@@ -99,7 +100,20 @@ def discover_chat_id(bot_token: str) -> str:
     )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Send a generated report to Telegram.")
+    parser.add_argument("--report", help="Path to a report file to send.")
+    parser.add_argument("--title", default="Costco Watchlist Report", help="Header prepended to the message.")
+    parser.add_argument(
+        "--suffix",
+        default="-watchlist.md",
+        help="Fallback suffix used to discover the latest report when --report is omitted.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     load_dotenv()
 
     bot_token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
@@ -111,10 +125,10 @@ def main() -> None:
         chat_id = discover_chat_id(bot_token)
         print(f"Auto-discovered TELEGRAM_CHAT_ID: {chat_id}")
 
-    report_path = get_latest_report_path()
+    report_path = Path(args.report) if args.report else get_latest_report_path(args.suffix)
     content = report_path.read_text(encoding="utf-8")
 
-    header = f"Costco Watchlist Report: {report_path.name}\n"
+    header = f"{args.title}: {report_path.name}\n"
     messages = split_message(header + "\n" + content)
 
     for idx, msg in enumerate(messages, start=1):

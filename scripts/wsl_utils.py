@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Tuple
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -209,7 +209,9 @@ def dedupe_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return deduped
 
 
-def load_previous_snapshot(history_dir: Path, current_snapshot: Path) -> tuple[Path | None, list[dict[str, Any]]]:
+def load_previous_snapshot(
+    history_dir: Path, current_snapshot: Path
+) -> Tuple[Optional[Path], list[dict[str, Any]]]:
     candidates = sorted(history_dir.glob("wsl_*.json"))
     previous_candidates = [path for path in candidates if path != current_snapshot]
     if not previous_candidates:

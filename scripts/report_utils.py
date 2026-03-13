@@ -1,8 +1,9 @@
 from datetime import date
 from pathlib import Path
+from typing import Optional
 
 
-def _render_item_lines(items: list[dict], limit: int | None = None) -> list[str]:
+def _render_item_lines(items: list[dict], limit: Optional[int] = None) -> list[str]:
     if not items:
         return ["- None"]
 
@@ -14,7 +15,7 @@ def _render_item_lines(items: list[dict], limit: int | None = None) -> list[str]
     return lines
 
 
-def render_wsl_report(diff_payload: dict, today: str | None = None) -> str:
+def render_wsl_report(diff_payload: dict, today: Optional[str] = None) -> str:
     report_date = today or date.today().isoformat()
     comparison = diff_payload.get("comparison", {})
     counts = comparison.get("counts", {})
@@ -58,7 +59,7 @@ def render_wsl_report(diff_payload: dict, today: str | None = None) -> str:
 
 
 def render_compact_telegram_summary(
-    watchlist_records: list[dict], diff_payload: dict, today: str | None = None
+    watchlist_records: list[dict], diff_payload: dict, today: Optional[str] = None
 ) -> str:
     report_date = today or date.today().isoformat()
     comparison = diff_payload.get("comparison", {})
